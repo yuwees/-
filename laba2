@@ -1,0 +1,272 @@
+#include <iostream>
+#include <string>
+#include <stack>
+#include <vector>
+#include <cctype>
+#include <locale>
+
+// ============ ЧАСТЬ 1: ПРОВЕРКА СКОБОК (без ||) ============
+
+bool isOpen(char c) {
+    switch (c) {
+    case '(':
+    case '{':
+    case '[':
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool isClose(char c) {
+    switch (c) {
+    case ')':
+    case '}':
+    case ']':
+        return true;
+    default:
+        return false;
+    }
+}
+
+char bracketPair(char c) {
+    switch (c) {
+    case ')': return '(';
+    case '}': return '{';
+    case ']': return '[';
+    default:  return 0;
+    }
+}
+
+bool checkBrackets(const std::string& s) {
+    std::stack<char> st;
+    for (char c : s) {
+        if (isOpen(c)) {
+            st.push(c);
+        }
+        else if (isClose(c)) {
+            if (st.empty()) return false;
+            if (st.top() != bracketPair(c)) return false;
+            st.pop();
+        }
+    }
+    return st.empty();
+}
+
+// ============ ЧАСТЬ 2: ОПЕРАТОРЫ И ПРИОРИТЕТЫ (без ||) ============
+
+bool isOperator(char c) {
+    switch (c) {
+    case '+':
+    case '-':
+    case '*':
+    case '/':
+        return true;
+    default:
+        return false;
+    }
+}
+
+int priority(char op) {
+    switch (op) {
+    case '+':
+    case '-':
+        return 1;
+    case '*':
+    case '/':
+        return 2;
+    default:
+        return 0;
+    }
+}
+
+// ============ ЧАСТЬ 3: ПРОВЕРКА НА "ДУРАКА" ============
+
+bool validate(const std::string& s) {
+    if (s.empty()) {
+        std::cout << "Ошибка: пустая строка" << std::endl;
+        return false;
+    }
+
+    if (s.back() != '=') {
+        std::cout << "Ошибка: выражение должно заканчиваться знаком '='" << std::endl;
+        return false;
+    }
+
+    if (!checkBrackets(s)) {
+        std::cout << "Ошибка: скобки расставлены неверно" << std::endl;
+        return false;
+    }
+
+    // Проверка пустых скобок и двух операторов подряд
+    for (size_t i = 0; i < s.size(); i++) {
+        char c = s[i];
+
+        if (c == '(' && i + 1 < s.size() && s[i + 1] == ')') {
+            std::cout << "Ошибка: пустые скобки" << std::endl;
+            return false;
+        }
+
+        // Два оператора подряд (упрощённо, без сложных проверок унарного минуса)
+        if (isOperator(c) && i + 1 < s.size()) {
+            char next = s[i + 1];
+            if (isOperator(next)) {
+                // Разрешаем только если это унарный минус после '(' или в начале
+                if (!(c == '(' && next == '-') && !(i == 0 && next == '-')) {
+                    std::cout << "Ошибка: два оператора подряд" << std::endl;
+                    return false;
+                }
+            }
+        }
+    }
+
+    std::string expr = s.substr(0, s.size() - 1);
+    if (!expr.empty() && isOperator(expr.back())) {
+        std::cout << "Ошибка: выражение заканчивается оператором" << std::endl;
+        return false;
+    }
+
+    bool hasDigit = false;
+    for (char c : s) {
+        if (std::isdigit(static_cast<unsigned char>(c))) {
+            hasDigit = true;
+            break;
+        }
+    }
+    if (!hasDigit) {
+        std::cout << "Ошибка: в выражении нет чисел" << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
+// ============ ЧАСТЬ 4: ПЕРЕВОД В ОПЗ (без || в проверках) ============
+
+std::vector<std::string> toPostfix(const std::string& s) {
+    std::vector<std::string> output;
+    std::stack<char> ops;
+
+    for (size_t i = 0; i < s.size(); i++) {
+        char c = s[i];
+
+        if (c == ' ') continue;
+
+        if (c == '=') {
+            while (!ops.empty()) {
+                output.push_back(std::string(1, ops.top()));
+                ops.pop();
+            }
+            break;
+        }
+
+        if (std::isdigit(static_cast<unsigned char>(c)) || c == '.') {
+            std::string numStr;
+            while (i < s.size() && (std::isdigit(static_cast<unsigned char>(s[i])) || s[i] == '.')) {
+                numStr += s[i];
+                i++;
+            }
+            i--;
+            output.push_back(numStr);
+            continue;
+        }
+
+        if (isOpen(c)) {
+            ops.push(c);
+            continue;
+        }
+
+        if (isClose(c)) {
+            char expectedOpen = bracketPair(c);
+            while (!ops.empty() && ops.top() != expectedOpen) {
+                output.push_back(std::string(1, ops.top()));
+                ops.pop();
+            }
+            if (!ops.empty()) ops.pop();
+            continue;
+        }
+
+        if (isOperator(c)) {
+            // Унарный минус: превращаем в 0 - X
+            if (c == '-' && (i == 0 || isOpen(s[i - 1]))) {
+                output.push_back("0");
+                ops.push('-');
+                continue;
+            }
+
+            while (!ops.empty() && !isOpen(ops.top()) && priority(ops.top()) >= priority(c)) {
+                output.push_back(std::string(1, ops.top()));
+                ops.pop();
+            }
+            ops.push(c);
+        }
+    }
+
+    return output;
+}
+
+// ============ ЧАСТЬ 5: ВЫЧИСЛЕНИЕ ОПЗ ============
+
+bool evalPostfix(const std::vector<std::string>& postfix, double& result) {
+    std::stack<double> st;
+
+    for (const std::string& token : postfix) {
+        if (token == "+" || token == "-" || token == "*" || token == "/") {
+            if (st.size() < 2) {
+                std::cout << "Ошибка: некорректное выражение" << std::endl;
+                return false;
+            }
+
+            double b = st.top(); st.pop();
+            double a = st.top(); st.pop();
+            double res = 0;
+
+            if (token == "+") res = a + b;
+            else if (token == "-") res = a - b;
+            else if (token == "*") res = a * b;
+            else if (token == "/") {
+                if (b == 0) {
+                    std::cout << "Ошибка: деление на ноль" << std::endl;
+                    return false;
+                }
+                res = a / b;
+            }
+
+            st.push(res);
+        }
+        else {
+            st.push(std::stod(token));
+        }
+    }
+
+    if (st.size() != 1) {
+        std::cout << "Ошибка: некорректное выражение" << std::endl;
+        return false;
+    }
+
+    result = st.top();
+    return true;
+}
+
+// ============ MAIN ============
+
+int main() {
+    std::setlocale(LC_ALL, "Russian");
+
+    std::string s;
+    std::cout << "Введите выражение (окончание '='): ";
+    std::getline(std::cin, s);
+
+    if (!validate(s)) {
+        return 0;
+    }
+
+    std::vector<std::string> postfix = toPostfix(s);
+
+    double result = 0;
+    if (evalPostfix(postfix, result)) {
+        std::cout << "Результат: " << result << std::endl;
+    }
+
+    return 0;
+}
