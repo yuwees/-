@@ -1,0 +1,32 @@
+#include <iostream>
+using namespace std;
+
+void selectionSort(int a[], int n) {
+    for (int i = 0; i < n - 1; i++) {
+        int minIdx = i;
+        for (int j = i + 1; j < n; j++) {
+            if (a[j] < a[minIdx]) minIdx = j;
+        }
+        int temp = a[i];
+        a[i] = a[minIdx];
+        a[minIdx] = temp;
+    }
+}
+
+int main() {
+    int n;
+    cout << "Введите количество элементов: ";
+    cin >> n;
+
+    int a[100];
+    cout << "Введите элементы: ";
+    for (int i = 0; i < n; i++) cin >> a[i];
+
+    selectionSort(a, n);
+
+    cout << "Отсортированная последовательность: ";
+    for (int i = 0; i < n; i++) cout << a[i] << " ";
+    cout << endl;
+
+    return 0;
+}
