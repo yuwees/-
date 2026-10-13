@@ -30,7 +30,7 @@ class Color(Enum):
 
 class Printer:
 
-    _fonts: Dict[str, Dict[str, List[str]]] = {}
+    _fonts: Dict[str, Dict[str, List[str]]] = {} #один общий словарь
 
     def __init__(self, color: Color, position: Tuple[int, int], symbol: str = "*", font_size: str = "5"):
         if not symbol:
@@ -46,18 +46,16 @@ class Printer:
                     Printer._fonts = json.load(f)
             except FileNotFoundError:
                 raise RuntimeError("Файл fonts.json не найден рядом с main.py")
-            except json.JSONDecodeError as e:
-                raise RuntimeError("Ошибка разбора fonts.json: " + str(e))
         if font_size not in Printer._fonts:
             raise RuntimeError("В fonts.json нет шрифта размера '" + font_size + "'")
         self._font = Printer._fonts[font_size]
         if " " not in self._font:
             raise RuntimeError("В шрифте '" + font_size + "' нет символа пробела")
 
-    def _move(self, x: int, y: int) -> str:
+    def _move(self, x: int, y: int) -> str: #перемещение курсора 
         return Ansi.PREFIX + str(y + 1) + ";" + str(x + 1) + "H"
 
-    def _render(self, text: str) -> List[str]:
+    def _render(self, text: str) -> List[str]: #текст -> пвсевдошрифт
         height = len(self._font[" "])
         result = ["" for _ in range(height)]
         for ch in text:
@@ -67,7 +65,7 @@ class Printer:
                 result[i] = result[i] + line + " "
         return result
 
-    def _draw(self, text: str, x: int, y: int) -> None:
+    def _draw(self, text: str, x: int, y: int) -> None: #текст на экране
         lines = self._render(text)
         for i, line in enumerate(lines):
             out = self._move(x, y + i) + self.color.to_ansi() + line + Ansi.RESET
