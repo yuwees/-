@@ -6,11 +6,11 @@
 
 
 # ---------- Задача 1: арифметическое выражение ----------
-def task1():
+def laba2():
     s = input("Выражение (закончите '='): ").strip()
 
     if not s.endswith('='):
-        print("Ошибка: выражение должно заканчиваться на '='")
+        print("Выражение должно заканчиваться на '='!")
         return
     s = s[:-1]
 
@@ -29,13 +29,13 @@ def task1():
                 print("Ошибка: лишняя ')'")
                 return
     if depth != 0:
-        print("Ошибка: не все скобки закрыты")
+        print("Не все скобки закрыты!")
         return
 
     try:
         result = eval(s)
     except ZeroDivisionError:
-        print("Ошибка: деление на 0")
+        print("Нельзя делить на 0!")
         return
     except Exception:
         print("Ошибка: некорректное выражение")
@@ -46,8 +46,7 @@ def task1():
     print("Результат:", result)
 
 
-# ---------- Задача 2: числа вида 2^K * 3^L * 5^M ----------
-def task2():
+def laba3():
     x = int(input("Введите x: "))
     result = []
     for i in range(1, x + 1):
@@ -59,8 +58,6 @@ def task2():
             result.append(i)
     print(*result)
 
-
-# ---------- Задача 3: сортировка Шелла ----------
 def shell_sort(a):
     a = a[:]
     gap = len(a) // 2
@@ -76,7 +73,6 @@ def shell_sort(a):
     return a
 
 
-# ---------- Задача 4: поразрядная сортировка ----------
 def radix_sort(a):
     a = a[:]
     exp = 1
@@ -91,7 +87,6 @@ def radix_sort(a):
     return a
 
 
-# ---------- Задача 5: пирамидальная сортировка ----------
 def heap_sort(a):
     a = a[:]
     n = len(a)
@@ -117,13 +112,13 @@ def heap_sort(a):
 
 
 if __name__ == "__main__":
-    print("=== Задача 1 ===")
-    task1()
+    print("Лаба 2: ")
+    laba2()
 
-    print("\n=== Задача 2 ===")
-    task2()
+    print("\nЛаба 3 ")
+    laba3()
 
-    print("\n=== Задачи 3, 4, 5 ===")
+    print("\nЛаба 7 и сортировки ")
     arr = list(map(int, input("Числа через пробел: ").split()))
     print("Шелл:        ", shell_sort(arr))
     print("Поразрядная: ", radix_sort(arr))
