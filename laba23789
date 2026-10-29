@@ -1,0 +1,130 @@
+# Задача 1: арифметическое выражение
+# Задача 2: числа вида 2^K * 3^L * 5^M
+# Задача 3: сортировка Шелла
+# Задача 4: поразрядная сортировка
+# Задача 5: пирамидальная сортировка
+
+
+# ---------- Задача 1: арифметическое выражение ----------
+def task1():
+    s = input("Выражение (закончите '='): ").strip()
+
+    if not s.endswith('='):
+        print("Ошибка: выражение должно заканчиваться на '='")
+        return
+    s = s[:-1]
+
+    for ch in s:
+        if ch not in "0123456789+-*/(). ":
+            print(f"Ошибка: недопустимый символ '{ch}'")
+            return
+
+    depth = 0
+    for ch in s:
+        if ch == '(':
+            depth += 1
+        elif ch == ')':
+            depth -= 1
+            if depth < 0:
+                print("Ошибка: лишняя ')'")
+                return
+    if depth != 0:
+        print("Ошибка: не все скобки закрыты")
+        return
+
+    try:
+        result = eval(s)
+    except ZeroDivisionError:
+        print("Ошибка: деление на 0")
+        return
+    except Exception:
+        print("Ошибка: некорректное выражение")
+        return
+
+    if isinstance(result, float) and result.is_integer():
+        result = int(result)
+    print("Результат:", result)
+
+
+# ---------- Задача 2: числа вида 2^K * 3^L * 5^M ----------
+def task2():
+    x = int(input("Введите x: "))
+    result = []
+    for i in range(1, x + 1):
+        n = i
+        for p in (2, 3, 5):
+            while n % p == 0:
+                n //= p
+        if n == 1:
+            result.append(i)
+    print(*result)
+
+
+# ---------- Задача 3: сортировка Шелла ----------
+def shell_sort(a):
+    a = a[:]
+    gap = len(a) // 2
+    while gap > 0:
+        for i in range(gap, len(a)):
+            tmp = a[i]
+            j = i
+            while j >= gap and a[j - gap] > tmp:
+                a[j] = a[j - gap]
+                j -= gap
+            a[j] = tmp
+        gap //= 2
+    return a
+
+
+# ---------- Задача 4: поразрядная сортировка ----------
+def radix_sort(a):
+    a = a[:]
+    exp = 1
+    while max(a) // exp > 0:
+        buckets = [[] for _ in range(10)]
+        for x in a:
+            buckets[(x // exp) % 10].append(x)
+        a = []
+        for b in buckets:
+            a += b
+        exp *= 10
+    return a
+
+
+# ---------- Задача 5: пирамидальная сортировка ----------
+def heap_sort(a):
+    a = a[:]
+    n = len(a)
+
+    def sift(i, size):
+        while True:
+            left, right, big = 2 * i + 1, 2 * i + 2, i
+            if left < size and a[left] > a[big]:
+                big = left
+            if right < size and a[right] > a[big]:
+                big = right
+            if big == i:
+                return
+            a[i], a[big] = a[big], a[i]
+            i = big
+
+    for i in range(n // 2 - 1, -1, -1):
+        sift(i, n)
+    for end in range(n - 1, 0, -1):
+        a[0], a[end] = a[end], a[0]
+        sift(0, end)
+    return a
+
+
+if __name__ == "__main__":
+    print("=== Задача 1 ===")
+    task1()
+
+    print("\n=== Задача 2 ===")
+    task2()
+
+    print("\n=== Задачи 3, 4, 5 ===")
+    arr = list(map(int, input("Числа через пробел: ").split()))
+    print("Шелл:        ", shell_sort(arr))
+    print("Поразрядная: ", radix_sort(arr))
+    print("Пирамидальная:", heap_sort(arr))
