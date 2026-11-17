@@ -1,0 +1,250 @@
+# Лаба №9: Пирамидальная сортировка=
+def heap_sort(arr):
+    a = list(arr)
+    n = len(a)
+    trace = []
+
+    def sift(i, size):
+        while True:
+            l, r, largest = 2 * i + 1, 2 * i + 2, i
+            if l < size and a[l] > a[largest]:
+                largest = l
+            if r < size and a[r] > a[largest]:
+                largest = r
+            if largest == i:
+                break
+            a[i], a[largest] = a[largest], a[i]
+            i = largest
+
+    for i in range(n // 2 - 1, -1, -1):
+        sift(i, n)
+    trace.append(("после построения кучи", a[:]))
+
+    for end in range(n - 1, 0, -1):
+        a[0], a[end] = a[end], a[0]
+        sift(0, end)
+    trace.append(("после извлечения корней", a[:]))
+
+    return a, trace
+
+
+#  Лаба №10: Сортировка слиянием
+def merge_sort_with_trace(a):
+    def rec(seq, depth):
+        if len(seq) <= 1:
+            return list(seq)
+        mid = len(seq) // 2
+        L = rec(seq[:mid], depth + 1)
+        R = rec(seq[mid:], depth + 1)
+        res, i, j = [], 0, 0
+        while i < len(L) and j < len(R):
+            if L[i] <= R[j]:
+                res.append(L[i]); i += 1
+            else:
+                res.append(R[j]); j += 1
+        res.extend(L[i:]); res.extend(R[j:])
+        log.append("  " * depth + f"слияние {L} + {R} → {res}")
+        return res
+
+    log = []
+    result = rec(a, 0)
+    return result, log
+
+
+# Лаба №11: Быстрая сортировка
+def quick_sort_with_trace(a):
+    a = list(a)
+    log = []
+
+    def qs(lo, hi, depth):
+        if lo >= hi:
+            return
+        pivot = a[(lo + hi) // 2]
+        i, j = lo, hi
+        while i <= j:
+            while a[i] < pivot: i += 1
+            while a[j] > pivot: j -= 1
+            if i <= j:
+                a[i], a[j] = a[j], a[i]
+                i += 1; j -= 1
+        log.append("  " * depth + f"pivot={pivot}, отрезок [{lo}..{hi}] → {a[lo:hi+1]}")
+        qs(lo, j, depth + 1)
+        qs(i, hi, depth + 1)
+
+    qs(0, len(a) - 1, 0)
+    return a, log
+
+
+# Лаба №12: Внешняя многофазная сортировка
+def _merge_two(a, b):
+    """Слияние двух отсортированных списков в один."""
+    res, i, j = [], 0, 0
+    while i < len(a) and j < len(b):
+        if a[i] <= b[j]:
+            res.append(a[i]); i += 1
+        else:
+            res.append(b[j]); j += 1
+    res.extend(a[i:])
+    res.extend(b[j:])
+    return res
+
+
+def polyphase_sort(arr, memory_limit=4):
+    """
+    Внешняя многофазная сортировка (polyphase merge sort).
+
+    Идея (данные больше, чем влезает в память):
+      1) читаем вход кусками по memory_limit, каждый кусок сортируем
+         в памяти — получаем «серии»;
+      2) раскладываем серии по двум лентам в количестве F(k-1) и F(k-2)
+         (числа Фибоначчи), недостающие добиваем пустышками (None);
+      3) попарно сливаем по одной серии с двух входных лент на третью
+         (пустую). Когда одна входная опустела — меняем роли лент.
+         Повторяем, пока не останется одна серия.
+
+    Почему Фибоначчи: чтобы на каждом проходе одна лента опустошалась
+    ровно тогда, когда другая готова принять роль выходной. Число
+    проходов получается O(log_phi N), где phi ≈ 1.618.
+
+    Возвращает (отсортированный_список, лог_шагов).
+    """
+    log = []
+    if not arr:
+        return [], log
+
+    memory_limit = max(1, memory_limit)
+
+    # Фаза 1: генерация серий
+    runs = [sorted(arr[i:i + memory_limit]) for i in range(0, len(arr), memory_limit)]
+    log.append(f"Фаза 1: получено {len(runs)} серий (по {memory_limit} элементов)")
+    for k, r in enumerate(runs, 1):
+        log.append(f"  серия {k}: {r}")
+
+    N = len(runs)
+    if N == 1:
+        log.append("Фаза 1: серия одна — уже отсортировано")
+        return runs[0][:], log
+
+    #  Фаза 2: распределение по Фибоначчи
+    fibs = [1, 1]
+    while fibs[-1] < N:
+        fibs.append(fibs[-1] + fibs[-2])
+
+    F = fibs[-1]                    # ближайшее число Фибоначчи >= N
+    f1, f2 = fibs[-2], fibs[-3]     # F(k-1) и F(k-2)
+    dummies = F - N                 # сколько пустых серий добавить
+
+    # Все настоящие серии на A (их f1, т.к. N > f1 всегда),
+    # пустышки — в начало B, чтобы они слились первыми.
+    tape_A = list(runs[:f1])
+    tape_B = [None] * dummies + list(runs[f1:])
+    tapes = [tape_A, tape_B, []]
+
+    log.append(f"Фаза 2: N={N}, F_k={F} = F(k-1)+F(k-2) = {f1}+{f2}, "
+               f"пустышек={dummies}")
+    log.append(f"  лента A: {len(tape_A)} серий, лента B: {len(tape_B)} серий, "
+               f"лента C: 0 (выход)")
+
+    # Фаза 3: попеременное слияние
+    names = ['A', 'B', 'C']
+    passes = 0
+
+    while True:
+        non_empty = [i for i in range(3) if tapes[i]]
+
+        # осталась одна лента с одной серией
+        if len(non_empty) == 1:
+            idx = non_empty[0]
+            if len(tapes[idx]) != 1:
+                raise RuntimeError(
+                    f"Слияние не сошлось: на ленте {names[idx]} "
+                    f"{len(tapes[idx])} серий, ожидалась ровно одна"
+                )
+            log.append(f"Фаза 3: готово за {passes} проходов, "
+                       f"результат на ленте {names[idx]}")
+            return tapes[idx][0][:], log
+
+        #страховка от логической ошибки
+        if len(non_empty) != 2:
+            raise RuntimeError(
+                f"Неожиданное состояние: непустых лент {len(non_empty)}, "
+                f"ожидалось 2"
+            )
+
+        # пустая лента = приёмник
+        empty = next(i for i in range(3) if not tapes[i])
+        in1, in2 = [i for i in range(3) if i != empty]
+
+        # попарно сливаем до исчерпания одной из входных лент
+        out = []
+        while tapes[in1] and tapes[in2]:
+            ra = tapes[in1].pop(0)
+            rb = tapes[in2].pop(0)
+            if ra is None:
+                out.append(rb)          # пустышка + реальная = реальная
+            elif rb is None:
+                out.append(ra)
+            else:
+                out.append(_merge_two(ra, rb))
+        tapes[empty] = out
+
+        passes += 1
+        log.append(
+            f"  проход {passes}: {names[in1]}+{names[in2]} → {names[empty]}, "
+            f"теперь A={len(tapes[0])}, B={len(tapes[1])}, C={len(tapes[2])}"
+        )
+
+
+
+def main():
+    print("\nЛаба №9. Пирамидальная сортировка (heap sort)")
+    print()
+
+    arr9 = [4, 10, 3, 5, 1, 8, 2, 9, 7, 6]
+    print(f"Исходный массив: {' '.join(map(str, arr9))}")
+    res9, trace9 = heap_sort(arr9)
+    for name, snap in trace9:
+        print(f"  {name}: {' '.join(map(str, snap))}")
+    print(f"Результат:       {' '.join(map(str, res9))}")
+    print(f"Проверка: {'OK' if res9 == sorted(arr9) else 'ОШИБКА'}")
+
+    print("\nЛаба №10. Сортировка слиянием (merge sort)")
+    print()
+
+    arr10 = [38, 27, 43, 3, 9, 82, 10]
+    print(f"Исходный массив: {' '.join(map(str, arr10))}")
+    res10, log10 = merge_sort_with_trace(arr10)
+    print("  Дерево слияний:")
+    for line in log10:
+        print("    " + line)
+    print(f"Результат:       {' '.join(map(str, res10))}")
+    print(f"Проверка: {'OK' if res10 == sorted(arr10) else 'ОШИБКА'}")
+
+    print("\nЛаба №11. Быстрая сортировка (quick sort, Хоар)")
+    print()
+
+    arr11 = [10, 7, 8, 9, 1, 5, 3, 6, 2, 4]
+    print(f"Исходный массив: {' '.join(map(str, arr11))}")
+    res11, log11 = quick_sort_with_trace(arr11)
+    print("  Разбиения:")
+    for line in log11:
+        print("    " + line)
+    print(f"Результат:       {' '.join(map(str, res11))}")
+    print(f"Проверка: {'OK' if res11 == sorted(arr11) else 'ОШИБКА'}")
+
+    print("\nЛаба №12. Внешняя многофазная сортировка")
+    print()
+
+    arr12 = [23, 5, 78, 12, 90, 3, 45, 67, 1, 34, 56, 89, 2, 11, 44, 99, 8]
+    ml = 4
+    print(f"Исходный массив ({len(arr12)} эл.): {' '.join(map(str, arr12))}")
+    print(f"memory_limit = {ml}")
+    res12, log12 = polyphase_sort(arr12, memory_limit=ml)
+    for line in log12:
+        print(line)
+    print(f"Результат:       {' '.join(map(str, res12))}")
+    print(f"Проверка: {'OK' if res12 == sorted(arr12) else 'ОШИБКА'}")
+
+
+if __name__ == "__main__":
+    main()
